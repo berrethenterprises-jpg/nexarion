@@ -9,13 +9,20 @@ function openPosition(token, size, entryPrice) {
 }
 
 function updatePosition(token, price) {
-  const p = positions.get(token);
-  if (!p) return;
-  if (price > p.peak) p.peak = price;
+  const pos = positions.get(token);
+  if (!pos) return;
+
+  if (price > pos.peak) {
+    pos.peak = price;
+  }
 }
 
 function closePosition(token) {
   positions.delete(token);
+}
+
+function hasPosition(token) {
+  return positions.has(token);
 }
 
 function getPositions() {
@@ -26,5 +33,6 @@ module.exports = {
   openPosition,
   updatePosition,
   closePosition,
+  hasPosition,
   getPositions
 };
