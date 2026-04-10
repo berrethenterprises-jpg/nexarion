@@ -16,4 +16,4 @@ function setCooldown(token) {
 module.exports = {
   isOnCooldown,
   setCooldown
-};
+}; 
