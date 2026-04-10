@@ -4,7 +4,8 @@ function openPosition(token, size, entryPrice) {
   positions.set(token, {
     size,
     entryPrice,
-    peak: entryPrice
+    peak: entryPrice,
+    entryTime: Date.now() // 🔥 REQUIRED
   });
 }
 
