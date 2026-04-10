@@ -5,9 +5,9 @@ const { setCooldown } = require("./cooldownManager");
 function shouldExit(pos, price) {
   const profit = (price - pos.entryPrice) / pos.entryPrice;
 
-  // 🔥 TEST MODE (FASTER EXITS)
-  if (profit > 0.02) return true;   // +2%
-  if (profit < -0.02) return true;  // -2%
+  // 🔥 FORCE QUICK EXIT FOR TESTING
+  if (profit > 0.001) return true;   // +0.1%
+  if (profit < -0.001) return true;  // -0.1%
 
   return false;
 }
@@ -22,7 +22,7 @@ async function handleExit(token, pos, market, onClose) {
 
   if (onClose) onClose();
 
-  console.log("[EXIT]", token, "PnL:", pnl.toFixed(2));
+  console.log("[EXIT]", token, "PnL:", pnl.toFixed(4));
 
   return true;
 }
