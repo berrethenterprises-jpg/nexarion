@@ -2,18 +2,18 @@ const { recordTrade } = require("./pnlManager");
 const { closePosition } = require("./positionManager");
 const { setCooldown } = require("./cooldownManager");
 
-// 🔥 Track entry time
-function shouldExit(pos) {
-  const now = Date.now();
+function shouldExit(pos, price) {
+  const profit = (price - pos.entryPrice) / pos.entryPrice;
 
-  // Exit after 10 seconds (FOR TESTING)
-  if (!pos.entryTime) return false;
+  // 🔥 REAL LOGIC
+  if (profit > 0.25) return true;   // take profit +25%
+  if (profit < -0.15) return true;  // stop loss -15%
 
-  return now - pos.entryTime > 10000;
+  return false;
 }
 
 async function handleExit(token, pos, market, onClose) {
-  if (!shouldExit(pos)) return false;
+  if (!shouldExit(pos, market.price)) return false;
 
   const pnl = recordTrade(pos.entryPrice, market.price, pos.size);
 
