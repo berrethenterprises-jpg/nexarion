@@ -1,6 +1,6 @@
 const wallets = [
-  "WALLET_ADDRESS_1",
-  "WALLET_ADDRESS_2",
+  "DWVEEjuGNTuR1zDxcgoAQPvfTpxxcgpCjqrwwCiZzEeV,"
+  "EKpspUNsUhf6u2uXVbqLENuMhg8dqjGUisKpmrDWrmjq",
   "WALLET_ADDRESS_3",
   "WALLET_ADDRESS_4",
   "WALLET_ADDRESS_5",
