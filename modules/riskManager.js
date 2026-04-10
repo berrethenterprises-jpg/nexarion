@@ -1,5 +1,5 @@
 function getMaxTrades(capital) {
-  return Math.floor((capital / 200) * 2);
+  return Math.max(1, Math.floor((capital / 200) * 2));
 }
 
 module.exports = { getMaxTrades };
