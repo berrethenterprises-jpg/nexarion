@@ -17,10 +17,13 @@ const { isOnCooldown } = require("./modules/cooldownManager");
 let capital = 1000;
 let activeTrades = 0;
 
+// 🔥 UPDATED WATCHLIST (MORE ACTIVE TOKENS)
 const WATCHLIST = [
-  "Es9vMFrzaCERmJfrF4HnXrhTbk4P8GHWxirMRHkRkNv",
-  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkYv6t9y8"
+  "So11111111111111111111111111111111111111112" // SOL
 ];
+
+// 🔥 TEST MODE SETTINGS (TEMPORARY)
+const MAX_PRICE_CHANGE = 5; // was 0.2 — loosened for testing
 
 async function processTrades() {
   while (true) {
@@ -32,14 +35,17 @@ async function processTrades() {
 
     for (let token of WATCHLIST) {
 
-      // 🔥 CRITICAL FIXES
+      // ✅ FIX 1 — Prevent duplicate entries
       if (hasPosition(token)) continue;
+
+      // ✅ FIX 2 — Cooldown enforcement
       if (isOnCooldown(token)) continue;
 
       const market = await getMarketData(token);
       if (!market) continue;
 
-      if (market.priceChange > 0.2) continue;
+      // 🔥 RELAXED FILTER (FOR TESTING)
+      if (market.priceChange > MAX_PRICE_CHANGE) continue;
 
       const size = capital * 0.02;
 
@@ -69,7 +75,7 @@ async function monitorPositions() {
       updatePosition(token, market.price);
 
       const exited = await handleExit(token, pos, market, () => {
-        activeTrades--; // 🔥 FIXED
+        activeTrades--; // ✅ FIXED PROPERLY
       });
 
       if (exited) continue;
@@ -84,7 +90,7 @@ function sleep(ms) {
 }
 
 function start() {
-  logger.info("NEXARION v3.2 FIXED LIVE");
+  logger.info("NEXARION v3.2 TEST MODE LIVE");
 
   processTrades();
   monitorPositions();
