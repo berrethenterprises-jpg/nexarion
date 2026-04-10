@@ -4,7 +4,10 @@ const cache = new Map();
 
 async function getMarketData(token) {
   const cached = cache.get(token);
-  if (cached && Date.now() - cached.time < 3000) return cached.data;
+
+  if (cached && Date.now() - cached.time < 3000) {
+    return cached.data;
+  }
 
   try {
     const res = await axios.get(
@@ -21,7 +24,9 @@ async function getMarketData(token) {
     };
 
     cache.set(token, { data, time: Date.now() });
+
     return data;
+
   } catch {
     return null;
   }
