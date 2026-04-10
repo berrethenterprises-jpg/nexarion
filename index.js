@@ -1,7 +1,7 @@
 const logger = require("./utils/logger");
 
-const { getMarketData } = require("./modules/marketData");
 const { executeSwap } = require("./modules/executionEngine");
+const { getMarketData } = require("./modules/marketData");
 
 const {
   openPosition,
@@ -14,75 +14,68 @@ const { handleExit } = require("./modules/exitManager");
 const { getMaxTrades } = require("./modules/riskManager");
 const { isOnCooldown } = require("./modules/cooldownManager");
 
+const { listenToWallet } = require("./modules/walletListener");
+const { getWallets } = require("./modules/walletManager");
+const { parseTrade } = require("./modules/tradeParser");
+const { isValidToken } = require("./modules/tokenFilter");
+
 let capital = 1000;
 let activeTrades = 0;
 
-// 🔥 UPDATED WATCHLIST (MORE ACTIVE TOKENS)
-const WATCHLIST = [
-  "So11111111111111111111111111111111111111112" // SOL
-];
+// 🔥 HANDLE WALLET TRADE
+async function handleWalletTrade(event) {
+  const parsed = await parseTrade(event.signature);
 
-// 🔥 TEST MODE SETTINGS (TEMPORARY)
-const MAX_PRICE_CHANGE = 0.2; // was 0.2 — loosened for testing
+  if (!parsed || parsed.side !== "buy") return;
 
-async function processTrades() {
+  const token = parsed.token;
+
+  if (!isValidToken(token)) return;
+  if (hasPosition(token)) return;
+  if (isOnCooldown(token)) return;
+
+  const market = await getMarketData(token);
+  if (!market) return;
+
+  const size = capital * 0.02;
+
+  const success = await executeSwap("SOL", token, size);
+  if (!success) return;
+
+  openPosition(token, size, market.price);
+  activeTrades++;
+
+  logger.info("COPY BUY:", token);
+}
+
+// 🔥 MONITOR POSITIONS
+async function monitorPositions() {
   while (true) {
+    const positions = getPositions();
 
-    if (activeTrades >= getMaxTrades(capital)) {
-      await sleep(500);
-      continue;
-    }
-
-    for (let token of WATCHLIST) {
-
-      // ✅ FIX 1 — Prevent duplicate entries
-      if (hasPosition(token)) continue;
-
-      // ✅ FIX 2 — Cooldown enforcement
-      if (isOnCooldown(token)) continue;
-
+    for (let [token, pos] of positions.entries()) {
       const market = await getMarketData(token);
       if (!market) continue;
 
-      // 🔥 RELAXED FILTER (FOR TESTING)
-      if (market.priceChange > MAX_PRICE_CHANGE) continue;
+      updatePosition(token, market.price);
 
-      const size = capital * 0.02;
-
-      const success = await executeSwap("SOL", token, size);
-      if (!success) continue;
-
-      openPosition(token, size, market.price);
-      activeTrades++;
-
-      logger.info("ENTER:", token, market.price);
+      await handleExit(token, pos, market, () => {
+        activeTrades--;
+      });
     }
 
     await sleep(2000);
   }
 }
 
-async function monitorPositions() {
-  while (true) {
+// 🔥 START LISTENERS
+function startListeners() {
+  const wallets = getWallets();
 
-    const positions = getPositions();
-
-    for (let [token, pos] of positions.entries()) {
-
-      const market = await getMarketData(token);
-      if (!market) continue;
-
-      updatePosition(token, market.price);
-
-      const exited = await handleExit(token, pos, market, () => {
-        activeTrades--; // ✅ FIXED PROPERLY
-      });
-
-      if (exited) continue;
-    }
-
-    await sleep(2000);
-  }
+  wallets.forEach(wallet => {
+    listenToWallet(wallet, handleWalletTrade);
+    logger.info("Listening:", wallet);
+  });
 }
 
 function sleep(ms) {
@@ -90,9 +83,9 @@ function sleep(ms) {
 }
 
 function start() {
-  logger.info("NEXARION v3.2 TEST MODE LIVE");
+  logger.info("NEXARION v4.0 COPY TRADING LIVE");
 
-  processTrades();
+  startListeners();
   monitorPositions();
 }
 
