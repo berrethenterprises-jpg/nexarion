@@ -23,7 +23,7 @@ const WATCHLIST = [
 ];
 
 // 🔥 TEST MODE SETTINGS (TEMPORARY)
-const MAX_PRICE_CHANGE = 5; // was 0.2 — loosened for testing
+const MAX_PRICE_CHANGE = 0.2; // was 0.2 — loosened for testing
 
 async function processTrades() {
   while (true) {
