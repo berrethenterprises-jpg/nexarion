@@ -1,11 +1,25 @@
-async function parseTrade(signature) {
-  // ⚠️ Simplified (free method limitation)
-  // In real system you'd decode full transaction
+const axios = require("axios");
 
-  return {
-    token: "So11111111111111111111111111111111111111112",
-    side: "buy"
-  };
+// 🔥 BASIC PARSER USING SIGNATURE (FREE METHOD)
+async function parseTrade(signature) {
+  try {
+    // NOTE: free infra limitation — simplified approach
+
+    const res = await axios.get(
+      `https://api.dexscreener.com/latest/dex/search?q=${signature}`
+    );
+
+    const pair = res.data.pairs?.[0];
+    if (!pair) return null;
+
+    return {
+      token: pair.baseToken.address,
+      side: "buy"
+    };
+
+  } catch (err) {
+    return null;
+  }
 }
 
 module.exports = { parseTrade };
