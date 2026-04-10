@@ -6,30 +6,35 @@ const { executeSwap } = require("./modules/executionEngine");
 const {
   openPosition,
   updatePosition,
+  hasPosition,
   getPositions
 } = require("./modules/positionManager");
 
 const { handleExit } = require("./modules/exitManager");
 const { getMaxTrades } = require("./modules/riskManager");
-const { getSeedWallets } = require("./modules/walletSeeder");
-const { getLossStreak } = require("./modules/pnlManager");
+const { isOnCooldown } = require("./modules/cooldownManager");
 
 let capital = 1000;
 let activeTrades = 0;
 
 const WATCHLIST = [
-  "So11111111111111111111111111111111111111112" // test token
+  "Es9vMFrzaCERmJfrF4HnXrhTbk4P8GHWxirMRHkRkNv",
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkYv6t9y8"
 ];
 
 async function processTrades() {
   while (true) {
 
     if (activeTrades >= getMaxTrades(capital)) {
-      await sleep(1000);
+      await sleep(500);
       continue;
     }
 
     for (let token of WATCHLIST) {
+
+      // 🔥 CRITICAL FIXES
+      if (hasPosition(token)) continue;
+      if (isOnCooldown(token)) continue;
 
       const market = await getMarketData(token);
       if (!market) continue;
@@ -39,7 +44,6 @@ async function processTrades() {
       const size = capital * 0.02;
 
       const success = await executeSwap("SOL", token, size);
-
       if (!success) continue;
 
       openPosition(token, size, market.price);
@@ -54,14 +58,21 @@ async function processTrades() {
 
 async function monitorPositions() {
   while (true) {
+
     const positions = getPositions();
 
     for (let [token, pos] of positions.entries()) {
+
       const market = await getMarketData(token);
       if (!market) continue;
 
       updatePosition(token, market.price);
-      await handleExit(token, pos, market);
+
+      const exited = await handleExit(token, pos, market, () => {
+        activeTrades--; // 🔥 FIXED
+      });
+
+      if (exited) continue;
     }
 
     await sleep(2000);
@@ -72,8 +83,8 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-async function start() {
-  logger.info("NEXARION v3.2 STARTED");
+function start() {
+  logger.info("NEXARION v3.2 FIXED LIVE");
 
   processTrades();
   monitorPositions();
