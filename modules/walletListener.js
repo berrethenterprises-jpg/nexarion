@@ -5,7 +5,7 @@ const connection = new Connection(RPC);
 
 const listeners = new Map();
 
-// 🔥 sampling control
+// 🔥 Sampling counter (GLOBAL)
 let counter = 0;
 
 function listenToWallet(address, onTrade) {
@@ -21,15 +21,17 @@ function listenToWallet(address, onTrade) {
       counter++;
       if (counter % 5 !== 0) return;
 
-      // 🔥 basic noise filter
+      // 🔥 FILTER LOW-QUALITY LOGS
       if (!logInfo.logs || logInfo.logs.length < 5) return;
 
       const logs = logInfo.logs.join(" ");
 
+      // 🔥 ONLY LIKELY SWAP EVENTS
       if (
         logs.includes("swap") ||
         logs.includes("Swap") ||
-        logs.includes("raydium")
+        logs.includes("raydium") ||
+        logs.includes("orca")
       ) {
         onTrade({
           wallet: address,
