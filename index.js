@@ -19,74 +19,106 @@ const { getWallets } = require("./modules/walletManager");
 const { parseTrade } = require("./modules/tradeParser");
 const { isValidToken } = require("./modules/tokenFilter");
 
+// 🔥 CORE STATE
 let capital = 1000;
 let activeTrades = 0;
 
-// 🔥 HANDLE WALLET TRADE
+
+// 🚀 HANDLE WALLET TRADES (COPY TRADING)
 async function handleWalletTrade(event) {
-  const parsed = await parseTrade(event.signature);
+  try {
+    // 🔥 LIMIT MAX ACTIVE TRADES
+    if (activeTrades >= getMaxTrades(capital)) return;
 
-  if (!parsed || parsed.side !== "buy") return;
+    const parsed = await parseTrade(event.signature);
 
-  const token = parsed.token;
+    // 🔥 CRITICAL: SKIP BAD OR EMPTY DATA
+    if (!parsed || parsed.side !== "buy") return;
 
-  if (!isValidToken(token)) return;
-  if (hasPosition(token)) return;
-  if (isOnCooldown(token)) return;
+    const token = parsed.token;
 
-  const market = await getMarketData(token);
-  if (!market) return;
+    // 🔥 SAFETY FILTERS
+    if (!isValidToken(token)) return;
+    if (hasPosition(token)) return;
+    if (isOnCooldown(token)) return;
 
-  const size = capital * 0.02;
+    const market = await getMarketData(token);
+    if (!market) return;
 
-  const success = await executeSwap("SOL", token, size);
-  if (!success) return;
+    const size = capital * 0.02;
 
-  openPosition(token, size, market.price);
-  activeTrades++;
+    const success = await executeSwap("SOL", token, size);
+    if (!success) return;
 
-  logger.info("COPY BUY:", token);
-}
+    openPosition(token, size, market.price);
+    activeTrades++;
 
-// 🔥 MONITOR POSITIONS
-async function monitorPositions() {
-  while (true) {
-    const positions = getPositions();
+    logger.info("COPY BUY:", token);
 
-    for (let [token, pos] of positions.entries()) {
-      const market = await getMarketData(token);
-      if (!market) continue;
-
-      updatePosition(token, market.price);
-
-      await handleExit(token, pos, market, () => {
-        activeTrades--;
-      });
-    }
-
-    await sleep(2000);
+  } catch (err) {
+    console.log("[ERROR] handleWalletTrade:", err.message);
   }
 }
 
-// 🔥 START LISTENERS
+
+// 🚀 MONITOR OPEN POSITIONS (EXIT LOGIC)
+async function monitorPositions() {
+  while (true) {
+    try {
+      const positions = getPositions();
+
+      for (let [token, pos] of positions.entries()) {
+        const market = await getMarketData(token);
+        if (!market) continue;
+
+        updatePosition(token, market.price);
+
+        const exited = await handleExit(token, pos, market, () => {
+          activeTrades--; // 🔥 IMPORTANT FIX
+        });
+
+        if (exited) continue;
+      }
+
+    } catch (err) {
+      console.log("[ERROR] monitorPositions:", err.message);
+    }
+
+    // 🔥 SLOW LOOP (REDUCES API LOAD MASSIVELY)
+    await sleep(7000);
+  }
+}
+
+
+// 🚀 START WALLET LISTENERS
 function startListeners() {
   const wallets = getWallets();
 
   wallets.forEach(wallet => {
-    listenToWallet(wallet, handleWalletTrade);
-    logger.info("Listening:", wallet);
+    try {
+      listenToWallet(wallet, handleWalletTrade);
+      logger.info("Listening:", wallet);
+    } catch (err) {
+      console.log("[ERROR] Listener failed:", wallet, err.message);
+    }
   });
 }
 
+
+// 🔧 UTILITY
 function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+
+// 🚀 MAIN START
 function start() {
-  logger.info("NEXARION v4.0 COPY TRADING LIVE");
+  logger.info("NEXARION v4.1 STABLE COPY TRADING LIVE");
 
   startListeners();
   monitorPositions();
 }
 
+
+// 🚀 RUN BOT
 start();
