@@ -5,6 +5,9 @@ const connection = new Connection(RPC);
 
 const listeners = new Map();
 
+// 🔥 sampling control
+let counter = 0;
+
 function listenToWallet(address, onTrade) {
   if (listeners.has(address)) return;
 
@@ -12,9 +15,17 @@ function listenToWallet(address, onTrade) {
 
   const sub = connection.onLogs(pubkey, (logInfo) => {
     try {
+      if (!logInfo.signature) return;
+
+      // 🔥 SAMPLE ONLY 1 IN 5 EVENTS
+      counter++;
+      if (counter % 5 !== 0) return;
+
+      // 🔥 basic noise filter
+      if (!logInfo.logs || logInfo.logs.length < 5) return;
+
       const logs = logInfo.logs.join(" ");
 
-      // Detect swap keywords
       if (
         logs.includes("swap") ||
         logs.includes("Swap") ||
@@ -25,6 +36,7 @@ function listenToWallet(address, onTrade) {
           signature: logInfo.signature
         });
       }
+
     } catch (err) {}
   });
 
