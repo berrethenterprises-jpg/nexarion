@@ -56,7 +56,7 @@ async function processQueue() {
     }
 
     // 🔥 throttle requests (KEY FIX)
-    await sleep(300);
+    await sleep(800);
   }
 
   processing = false;
