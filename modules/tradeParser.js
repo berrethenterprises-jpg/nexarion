@@ -3,36 +3,70 @@ const { Connection } = require("@solana/web3.js");
 const RPC = "https://api.mainnet-beta.solana.com";
 const connection = new Connection(RPC);
 
-async function parseTrade(signature) {
-  try {
-    const tx = await connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0
-    });
+// 🔥 queue system
+const queue = [];
+let processing = false;
 
-    if (!tx) return null;
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
-    const instructions = tx.transaction.message.instructions;
+async function processQueue() {
+  if (processing) return;
+  processing = true;
 
-    for (let ix of instructions) {
-      if (!ix.parsed) continue;
+  while (queue.length > 0) {
+    const { signature, resolve } = queue.shift();
 
-      // Look for token transfers
-      if (ix.parsed.type === "transfer") {
-        const token = ix.parsed.info?.mint;
-        if (!token) continue;
+    try {
+      const tx = await connection.getParsedTransaction(signature, {
+        maxSupportedTransactionVersion: 0
+      });
 
-        return {
-          token,
-          side: "buy"
-        };
+      if (!tx) {
+        resolve(null);
+        continue;
       }
+
+      const instructions = tx.transaction.message.instructions;
+
+      let found = null;
+
+      for (let ix of instructions) {
+        if (!ix.parsed) continue;
+
+        if (ix.parsed.type === "transfer") {
+          const token = ix.parsed.info?.mint;
+          if (!token) continue;
+
+          found = {
+            token,
+            side: "buy"
+          };
+          break;
+        }
+      }
+
+      resolve(found);
+
+    } catch (err) {
+      // 🔥 retry once after delay
+      await sleep(500);
+      resolve(null);
     }
 
-    return null;
-
-  } catch (err) {
-    return null;
+    // 🔥 throttle requests (KEY FIX)
+    await sleep(300);
   }
+
+  processing = false;
+}
+
+function parseTrade(signature) {
+  return new Promise((resolve) => {
+    queue.push({ signature, resolve });
+    processQueue();
+  });
 }
 
 module.exports = { parseTrade };
