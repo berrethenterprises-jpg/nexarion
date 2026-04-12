@@ -5,7 +5,8 @@ const cache = new Map();
 async function getMarketData(token) {
   const cached = cache.get(token);
 
-  if (cached && Date.now() - cached.time < 3000) {
+  // 🔥 10 SECOND CACHE
+  if (cached && Date.now() - cached.time < 10000) {
     return cached.data;
   }
 
